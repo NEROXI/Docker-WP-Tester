@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  app:
+    container_name: 'wp-app'
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+        FTP_PASSWORD: ${FTP_PASSWORD}
+        WP_VERSION: ${WP_VERSION}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "21:21"
+    volumes:
+      - ./wp49:/var/www/wp49
+      - ./wp59:/var/www/wp59
+      - ./wp64:/var/www/wp64
+      - ./legacy:/var/www/legacy
+      - ./docker/vsftpd.chroot_list:/etc/vsftpd.chroot_list
+      - ./docker/ssl:/app/ssl
+    networks:
+      - app-network
+
+  app-nginx:
+    container_name: 'wp-app-nginx'
+    build:
+      context: ./docker
+      dockerfile: Dockerfile-nginx
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+        FTP_PASSWORD: ${FTP_PASSWORD}
+        WP_VERSION: ${WP_VERSION}
+    ports:
+      - "81:80"
+      - "444:443"
+      - "23:21"
+    volumes:
+      - ./wp49:/var/www/wp49
+      - ./docker/vsftpd.chroot_list:/etc/vsftpd.chroot_list
+      - ./docker/ssl:/app/ssl
+      - ./docker/nginx/default:/etc/nginx/sites-available/default
+    networks:
+      - app-network
+
+  mariadb:
+    image: mariadb:latest
+    container_name: 'mariadb'
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mariadb:/var/lib/mysql
+    networks:
+      - app-network
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - app-network
+
+  mailpit:
+    image: 'axllent/mailpit:latest'
+    container_name: mailpit
+    ports:
+      - '1502:1025'
+      - '8025:8025'
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external:
+      name: app-network
